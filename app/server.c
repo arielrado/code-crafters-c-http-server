@@ -8,7 +8,37 @@
 #include <unistd.h>
 
 #define HTTP_OK "HTTP/1.1 200 OK\r\n\r\n"
+#define HTTP_NOT_FOUND "HTTP/1.1 404 NOT FOUND\r\n\r\n"
 #define BUFFER_SIZE 1024
+
+typedef struct {
+	char method[8];
+	char path[256];
+	char version[16];
+} HttpRequest;
+
+HttpRequest* new_request(const char* method, const char* path, const char* version) {
+	HttpRequest* request = malloc(sizeof(HttpRequest));
+	strcpy(request->method, method);
+	strcpy(request->path, path);
+	strcpy(request->version, version);
+	return request;
+}
+
+HttpRequest* parse_request(char* buffer) {
+	if(strlen(buffer) == 0){
+		return NULL;
+	}
+	char* start_line = strtok(buffer, "\r\n\r\n");
+	char* method = strtok(start_line, " ");
+	char* path = strtok(NULL, " ");
+	char* version = strtok(NULL, " ");
+
+	if (method == NULL || path == NULL || version == NULL)
+		return NULL;
+
+	return new_request(method, path, version);
+}
 
 int main() {
 	// Disable output buffering
@@ -16,8 +46,9 @@ int main() {
 
 
 	int server_fd, client_addr_len, client_fd, bytes_recieved, bytes_sent;
-	unsigned char buffer[BUFFER_SIZE];
+	char buffer[BUFFER_SIZE];
 	struct sockaddr_in client_addr;
+	HttpRequest* request;
 
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd == -1) {
@@ -57,18 +88,31 @@ int main() {
 		printf("client connection failed\n");
 		return 1;
 	}
+	printf("Client connected\n");
 
 	bytes_recieved = read(client_fd, buffer, BUFFER_SIZE);
-	printf("recieved rquest (%d bytes): %s\n", bytes_recieved, buffer);
+	printf("recieved request (%d bytes): %s\n", bytes_recieved, buffer);
 
-	bytes_sent = send(client_fd, HTTP_OK, strlen(HTTP_OK), 0);
+	request = parse_request(buffer);
+	if (request==NULL){
+		printf("null request!");
+		return 1;
+	}
+
+	if (strcmp(request->path, "/")==0) {
+		bytes_sent = send(client_fd, HTTP_OK, strlen(HTTP_OK), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK);
+	}
+	else {
+		bytes_sent = send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_NOT_FOUND);
+	}
+
 	if (bytes_sent == -1) {
 		printf("failed to send HTTP_OK\n");
 		return 1;
 	}
-	printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK);
-	printf("Client connected\n");
-
+	free(request);
 	close(client_fd);
 	close(server_fd);
 
