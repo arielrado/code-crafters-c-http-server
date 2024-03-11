@@ -26,7 +26,7 @@ HttpRequest* new_request(const char* method, const char* path, const char* versi
 }
 
 HttpRequest* parse_request(char* buffer) {
-	if(strlen(buffer) == 0){
+	if (strlen(buffer) == 0) {
 		return NULL;
 	}
 	char* start_line = strtok(buffer, "\r\n\r\n");
@@ -38,6 +38,27 @@ HttpRequest* parse_request(char* buffer) {
 		return NULL;
 
 	return new_request(method, path, version);
+}
+
+int count_tokens(char* str, char* token) {
+	int count = 0;
+	char* ptr = str;
+
+	while(ptr!='\0'){
+		if(&ptr == token){
+			count++;
+		}
+		ptr++;
+	}
+}
+
+char** parse_path(char* path) {
+	int separator_count = count_tokens(path, "/");
+	char path_components[separator_count];
+	for (int i = 0; i < separator_count; i++) {
+		//TODO: use strtok to get components
+	}
+	
 }
 
 int main() {
@@ -94,12 +115,12 @@ int main() {
 	printf("recieved request (%d bytes): %s\n", bytes_recieved, buffer);
 
 	request = parse_request(buffer);
-	if (request==NULL){
+	if (request == NULL) {
 		printf("null request!");
 		return 1;
 	}
 
-	if (strcmp(request->path, "/")==0) {
+	if (strcmp(request->path, "/") == 0) {
 		bytes_sent = send(client_fd, HTTP_OK, strlen(HTTP_OK), 0);
 		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK);
 	}
