@@ -54,11 +54,16 @@ int count_tokens(char* str, char* token) {
 
 char** parse_path(char* path) {
 	int separator_count = count_tokens(path, "/");
-	char path_components[separator_count];
-	for (int i = 0; i < separator_count; i++) {
-		//TODO: use strtok to get components
+	char* path_components = (char*) malloc(separator_count*sizeof(char));
+	if(path_components==NULL){
+		printf("malloc failed!");
+		return NULL;
 	}
-	
+	path_components[0] = strtok(path,"/");
+	for (int i = 1; i < separator_count; i++) {
+		path_components[i] = strtok(NULL, "/");
+	}
+	return path_components;
 }
 
 int main() {
