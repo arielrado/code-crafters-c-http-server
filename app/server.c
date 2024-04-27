@@ -57,13 +57,17 @@ int count_tokens(char* str, char token) {
 	return count;
 }
 
+bool isEcho(char* path) {
+	return strncmp(path, "/echo/", 6) == 0;
+}
+
 char** parse_path(char* path) {
 	printf("path: %s\n", path);
 	int separator_count = count_tokens(path, '/');
 	printf("separator count: %d\n", separator_count);
-	char** path_components = (char**)malloc(separator_count * sizeof(char));
+	char** path_components = (char**)malloc(separator_count * sizeof(char*));
 	if (path_components == NULL) {
-		printf("malloc failed!");
+		printf("malloc failed!\n");
 		return NULL;
 	}
 	path_components[0] = strtok(path, "/");
@@ -151,27 +155,31 @@ int main() {
 		return 1;
 	}
 
-	path_components = parse_path(request->path);
-	if (strlen(path_components[0]) == 0) {
-		bytes_sent = send(client_fd, HTTP_OK_EMPTY, strlen(HTTP_OK_EMPTY), 0);
-		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK_EMPTY);
-	}
-	else if (strcmp(path_components[0], "echo") == 0) {
+	if(!isEcho(request->path)) {
+		path_components = parse_path(request->path);
+		printf("path components[0]: %s\n", path_components[0]);
+		if (path_components[0]==NULL) {
+			printf("empty path\n");
+			bytes_sent = send(client_fd, HTTP_OK_EMPTY, strlen(HTTP_OK_EMPTY), 0);
+			printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK_EMPTY);
+		} else {
+		bytes_sent = send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_NOT_FOUND);
+		}
+	} else {
 		printf("echo request\n");
 		if(!generate_echo_response(request, buffer)) return 1;
 		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
 		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
 	}
-	else {
-		bytes_sent = send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
-		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_NOT_FOUND);
-	}
+	
 
 	if (bytes_sent == -1) {
 		printf("failed to send HTTP_OK\n");
 		return 1;
 	}
 	free(request);
+	free(path_components);
 	close(client_fd);
 	close(server_fd);
 
