@@ -19,13 +19,21 @@ typedef struct {
 	char method[8];
 	char path[256];
 	char version[16];
+	char host[32];
+	char user_agent[256];
 } HttpRequest;
 
-HttpRequest* new_request(const char* method, const char* path, const char* version) {
+HttpRequest* new_request(const char* method,
+							const char* path,
+							const char* version,
+							const char* host,
+							const char* user_agent) {
 	HttpRequest* request = malloc(sizeof(HttpRequest));
 	strcpy(request->method, method);
 	strcpy(request->path, path);
 	strcpy(request->version, version);
+	strcpy(request->host, host);
+	strcpy(request->user_agent, user_agent);
 	return request;
 }
 
@@ -33,15 +41,23 @@ HttpRequest* parse_request(char* buffer) {
 	if (strlen(buffer) == 0) {
 		return NULL;
 	}
-	char* start_line = strtok(buffer, "\r\n\r\n");
-	char* method = strtok(start_line, " ");
-	char* path = strtok(NULL, " ");
-	char* version = strtok(NULL, " ");
+	char* first_line = strtok(buffer, "\r\n");
+	char* second_line = strtok(NULL, "\r\n");
+	char* third_line = strtok(NULL, "\r\n");
 
+	char* method = strtok(first_line, " ");
+	char* path = strtok(NULL, " ");
+	char* version = strtok(NULL, " "); 
+
+	printf("second line: %s\n", second_line);
+	printf("third line: %s\n", third_line);
+	char* host = second_line+strlen("Host: ");
+	char* user_agent = third_line+strlen("User-agent: ");
+	printf("Host: %s\nUser-agent: %s\n", host, user_agent);
 	if (method == NULL || path == NULL || version == NULL)
 		return NULL;
 
-	return new_request(method, path, version);
+	return new_request(method, path, version, host, user_agent);
 }
 
 int count_tokens(char* str, char token) {
