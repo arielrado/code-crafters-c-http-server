@@ -179,7 +179,6 @@ int main() {
 		return 1;
 	}
 	free(request);
-	free(path_components);
 	close(client_fd);
 	close(server_fd);
 
