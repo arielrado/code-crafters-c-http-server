@@ -155,7 +155,14 @@ int main() {
 		return 1;
 	}
 
-	if(!isEcho(request->path)) {
+	if(isEcho(request->path)) {
+		printf("echo request\n");
+		if(!generate_echo_response(request, buffer)) return 1;
+		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
+	} else if (strcmp(request->path, "/user-agent") == 0) {
+		// send user-agent
+	} else {
 		path_components = parse_path(request->path);
 		printf("path components[0]: %s\n", path_components[0]);
 		if (path_components[0]==NULL) {
@@ -166,11 +173,6 @@ int main() {
 		bytes_sent = send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
 		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_NOT_FOUND);
 		}
-	} else {
-		printf("echo request\n");
-		if(!generate_echo_response(request, buffer)) return 1;
-		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
-		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
 	}
 	
 
