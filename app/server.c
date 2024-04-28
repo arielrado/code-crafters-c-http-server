@@ -93,6 +93,23 @@ char** parse_path(char* path) {
 	return path_components;
 }
 
+bool generate_user_agent_response(HttpRequest* req, char* buffer) {
+	int i = 0;
+	strcpy(buffer, HTTP_OK);
+	i=strlen(buffer);
+	strcpy(buffer+i, PLAIN_TEXT);
+	i=strlen(buffer);
+	char* string;
+	if(0 > asprintf(&string, "Content-Length: %d\r\n\r\n", strlen(req->user_agent))) return false;
+	strcpy(buffer+i, string);
+	i=strlen(buffer);
+	free(string);
+	strcpy(buffer+i, req->user_agent);
+	i=strlen(buffer);
+	strcpy(buffer+i, "\r\n\r\n");
+	return true;
+}
+
 bool generate_echo_response(HttpRequest* req, char* buffer) {
 	int i = 0;
 	strcpy(buffer, HTTP_OK);
@@ -178,6 +195,9 @@ int main() {
 		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
 	} else if (strcmp(request->path, "/user-agent") == 0) {
 		// send user-agent
+		if(!generate_user_agent_response(request, buffer)) return 1;
+		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
 	} else {
 		path_components = parse_path(request->path);
 		printf("path components[0]: %s\n", path_components[0]);
