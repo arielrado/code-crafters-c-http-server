@@ -41,22 +41,22 @@ HttpRequest* parse_request(char* buffer) {
 	if (strlen(buffer) == 0) {
 		return NULL;
 	}
-	char* first_line = strtok(buffer, "\r\n");
-	char* second_line = strtok(NULL, "\r\n");
-	char* third_line = strtok(NULL, "\r\n");
+	char* rest = buffer;
+	char* first_line = strtok_r(buffer, "\r\n",&rest);
+	char* second_line = strtok_r(NULL, "\r\n",&rest);
+	char* third_line = strtok_r(NULL, "\r\n",&rest);
 
-	char* method = strtok(first_line, " ");
-	char* path = strtok(NULL, " ");
-	char* version = strtok(NULL, " "); 
+	char* method = strtok_r(first_line, " ",&rest);
+	char* path = strtok_r(NULL, " ",&rest);
+	char* version = strtok_r(NULL, " ",&rest); 
 
-	printf("second line: %s\n", second_line);
-	printf("third line: %s\n", third_line);
-	char* host = second_line+strlen("Host: ");
-	char* user_agent = third_line+strlen("User-agent: ");
-	printf("Host: %s\nUser-agent: %s\n", host, user_agent);
+	// printf("second line: %s\n", second_line);
+	// printf("third line: %s\n", third_line);
+	char* host = (second_line)?second_line+strlen("Host: "):"\0";
+	char* user_agent = (third_line)?third_line+strlen("User-agent: "):"\0";
+	// printf("Host: %s\nUser-agent: %s\n", host, user_agent);
 	if (method == NULL || path == NULL || version == NULL)
 		return NULL;
-
 	return new_request(method, path, version, host, user_agent);
 }
 
