@@ -80,6 +80,10 @@ bool isEcho(char* path) {
 	return strncmp(path, "/echo/", 6) == 0;
 }
 
+bool isFiles(char* path) {
+	return strncmp(path, "/files/", 7) == 0;
+}
+
 char** parse_path(char* path) {
 	printf("path: %s\n", path);
 	int separator_count = count_tokens(path, '/');
@@ -150,6 +154,9 @@ int handle_connection(int client_fd){
 		if(!generate_echo_response(request, buffer)) return 1;
 		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
 		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
+	} else if (isFiles(request->path)) {
+		printf("files request\n");
+		//respond with file
 	} else if (strcmp(request->path, "/user-agent") == 0) {
 		// send user-agent
 		if(!generate_user_agent_response(request, buffer)) return 1;
