@@ -13,6 +13,7 @@
 
 #define HTTP_OK_EMPTY "HTTP/1.1 200 OK\r\n\r\n"
 #define HTTP_OK "HTTP/1.1 200 OK\r\n"
+#define HTTP_201 "HTTP/1.1 201 Created\r\n\r\n"
 #define HTTP_NOT_FOUND "HTTP/1.1 404 NOT FOUND\r\n\r\n"
 #define PLAIN_TEXT "Content-Type: text/plain\r\n"
 #define OCTET_STREAM "Content-Type: application/octet-stream\r\n"
@@ -26,6 +27,9 @@ typedef struct {
 	char version[16];
 	char host[32];
 	char user_agent[256];
+	int content_length;
+	char accept_encoding[16];
+	char body[1024];
 } HttpRequest;
 
 char* directory = "\0";
@@ -34,13 +38,19 @@ HttpRequest* new_request(const char* method,
 							const char* path,
 							const char* version,
 							const char* host,
-							const char* user_agent) {
+							const char* user_agent,
+							const int content_length,
+							const char* accept_encoding,
+							const char* body) {
 	HttpRequest* request = malloc(sizeof(HttpRequest));
 	strcpy(request->method, method);
 	strcpy(request->path, path);
 	strcpy(request->version, version);
 	strcpy(request->host, host);
 	strcpy(request->user_agent, user_agent);
+	request->content_length = content_length;
+	strcpy(request->accept_encoding, accept_encoding);
+	strcpy(request->body, body);
 	return request;
 }
 
@@ -52,6 +62,9 @@ HttpRequest* parse_request(char* buffer) {
 	char* first_line = strtok_r(buffer, "\r\n",&rest);
 	char* second_line = strtok_r(NULL, "\r\n",&rest);
 	char* third_line = strtok_r(NULL, "\r\n",&rest);
+	char* fourth_line = strtok_r(NULL, "\r\n",&rest);
+	char* fifth_line = strtok_r(NULL, "\r\n",&rest);
+	char* body = strtok_r(NULL, "\r\n",&rest);
 
 	char* method = strtok_r(first_line, " ",&rest);
 	char* path = strtok_r(NULL, " ",&rest);
@@ -61,10 +74,13 @@ HttpRequest* parse_request(char* buffer) {
 	// printf("third line: %s\n", third_line);
 	char* host = (second_line)?second_line+strlen("Host: "):"\0";
 	char* user_agent = (third_line)?third_line+strlen("User-agent: "):"\0";
-	// printf("Host: %s\nUser-agent: %s\n", host, user_agent);
+	int content_length = atoi((fourth_line)?fourth_line+strlen("Content-Length: "):"0");
+	char* accept_encoding = (fifth_line)?fifth_line+strlen("Accept-Encoding: "):"\0";
+	body = (body)?body:"\0";
+	printf("body: %s\n", body);
 	if (method == NULL || path == NULL || version == NULL)
 		return NULL;
-	return new_request(method, path, version, host, user_agent);
+	return new_request(method, path, version, host, user_agent,content_length,accept_encoding,body);
 }
 
 int count_tokens(char* str, char token) {
@@ -179,6 +195,28 @@ FILE* generate_file_resonse(HttpRequest* req, char* buffer) {
 	return file;
 }
 
+bool handle_post_request(HttpRequest* req, char* buffer) {
+	if(directory[0]=='\0'){
+		printf("no directory\n");
+		return false;
+	}
+	char path[PATH_SIZE];
+	int i=0;
+	strcpy(path, directory);
+	i=strlen(path);
+	strcpy(path+i, req->path+strlen("/files/"));
+	printf("path: %s\n", path);
+	FILE* file = fopen(path, "w");
+	if(!file){
+		printf("error opening file\n");
+		return false;
+	}
+	fwrite(req->body, 1, req->content_length, file);
+	fclose(file);
+	printf("successfully wrote to file (%d bytes)\n", req->content_length);
+	return true;
+}
+
 int handle_connection(int client_fd){
 	char buffer[BUFFER_SIZE];
 	int bytes_recieved, bytes_sent;
@@ -194,7 +232,22 @@ int handle_connection(int client_fd){
 		return 1;
 	}
 
-	if(isEcho(request->path)) {
+	if (strcmp(request->method, "POST") == 0) {
+		//save the body to specified file
+		printf("POST request\n");
+		if(!isFiles(request->path)){
+			printf("invalid path\n");
+			send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
+		} else {
+			if(!handle_post_request(request, buffer)){
+				printf("error handling post request\n");
+				send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
+			} else {
+				bytes_sent = send(client_fd, HTTP_201, strlen(HTTP_201), 0);
+				printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_201);
+			}
+		}
+	} else if(isEcho(request->path)) {
 		printf("echo request\n");
 		if(!generate_echo_response(request, buffer)) return 1;
 		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
