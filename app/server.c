@@ -132,47 +132,47 @@ int handle_connection(int client_fd, char* buffer){
 	char** path_components;
 	HttpRequest *request;
 	bytes_recieved = read(client_fd, buffer, BUFFER_SIZE);
-		printf("recieved request (%d bytes): %s\n", bytes_recieved, buffer);
+	printf("recieved request (%d bytes): %s\n", bytes_recieved, buffer);
 
-		request = parse_request(buffer);
-		printf("parsed request: %s %s %s\n", request->method, request->path, request->version);
-		if (request == NULL) {
-			printf("null request!");
-			return 1;
-		}
+	request = parse_request(buffer);
+	printf("parsed request: %s %s %s\n", request->method, request->path, request->version);
+	if (request == NULL) {
+		printf("null request!");
+		return 1;
+	}
 
-		if(isEcho(request->path)) {
-			printf("echo request\n");
-			if(!generate_echo_response(request, buffer)) return 1;
-			bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
-			printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
-		} else if (strcmp(request->path, "/user-agent") == 0) {
-			// send user-agent
-			if(!generate_user_agent_response(request, buffer)) return 1;
-			bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
-			printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
+	if(isEcho(request->path)) {
+		printf("echo request\n");
+		if(!generate_echo_response(request, buffer)) return 1;
+		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
+	} else if (strcmp(request->path, "/user-agent") == 0) {
+		// send user-agent
+		if(!generate_user_agent_response(request, buffer)) return 1;
+		bytes_sent = send(client_fd, buffer, strlen(buffer), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
+	} else {
+		path_components = parse_path(request->path);
+		printf("path components[0]: %s\n", path_components[0]);
+		if (path_components[0]==NULL) {
+			printf("empty path\n");
+			bytes_sent = send(client_fd, HTTP_OK_EMPTY, strlen(HTTP_OK_EMPTY), 0);
+			printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK_EMPTY);
 		} else {
-			path_components = parse_path(request->path);
-			printf("path components[0]: %s\n", path_components[0]);
-			if (path_components[0]==NULL) {
-				printf("empty path\n");
-				bytes_sent = send(client_fd, HTTP_OK_EMPTY, strlen(HTTP_OK_EMPTY), 0);
-				printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_OK_EMPTY);
-			} else {
-			bytes_sent = send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
-			printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_NOT_FOUND);
-			}
+		bytes_sent = send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
+		printf("successfully sent (%d bytes): %s\n", bytes_sent, HTTP_NOT_FOUND);
 		}
+	}
 		
 
-		if (bytes_sent == -1) {
-			printf("failed to send HTTP_OK\n");
-			return 1;
-		}
-		free(request);
-		close(client_fd);
-		printf("Client disconnected\n");
-		return 0;
+	if (bytes_sent == -1) {
+		printf("failed to send HTTP_OK\n");
+		return 1;
+	}
+	free(request);
+	close(client_fd);
+	printf("Client disconnected\n");
+	return 0;
 }
 
 int main() {
@@ -208,14 +208,14 @@ int main() {
 		return 1;
 	}
 
-	const int connection_backlog = 1024;
+	const int connection_backlog = 126;
 	if (listen(server_fd, connection_backlog) != 0) {
 		printf("Listen failed: %s \n", strerror(errno));
 		return 1;
 	}
 	client_addr_len = (socklen_t)sizeof(client_addr);
 
-	for(;;){
+	while(true){
 		printf("Waiting for a client to connect...\n");
 
 		client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_addr_len);
