@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #define HTTP_OK_EMPTY "HTTP/1.1 200 OK\r\n\r\n"
 #define HTTP_OK "HTTP/1.1 200 OK\r\n"
@@ -176,6 +177,13 @@ int handle_connection(int client_fd){
 	return 0;
 }
 
+void *t_handle_connection(void* p_client_fd) {
+	int client_fd = *(int*)p_client_fd;
+	free(p_client_fd);
+	handle_connection(client_fd);
+	return NULL;
+}
+
 int main() {
 	// Disable output buffering
 	setbuf(stdout, NULL);
@@ -225,7 +233,10 @@ int main() {
 		}
 		printf("Client connected\n");
 
-		if(handle_connection(client_fd, buffer)) return 1;
+		pthread_t thread;
+		int* p_client_fd = malloc(sizeof(int));
+		*p_client_fd = client_fd;
+		pthread_create(&thread, NULL, t_handle_connection, p_client_fd);
 	}
 	close(server_fd);
 
