@@ -8,13 +8,17 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <paths.h>
+#include <sys/stat.h>
 
 #define HTTP_OK_EMPTY "HTTP/1.1 200 OK\r\n\r\n"
 #define HTTP_OK "HTTP/1.1 200 OK\r\n"
 #define HTTP_NOT_FOUND "HTTP/1.1 404 NOT FOUND\r\n\r\n"
 #define PLAIN_TEXT "Content-Type: text/plain\r\n"
+#define OCTET_STREAM "Content-Type: application/octet-stream\r\n"
 #define ECHO_LEN 6
 #define BUFFER_SIZE 1024
+#define PATH_SIZE 256
 
 typedef struct {
 	char method[8];
@@ -24,7 +28,7 @@ typedef struct {
 	char user_agent[256];
 } HttpRequest;
 
-char* directory = NULL;
+char* directory = "\0";
 
 HttpRequest* new_request(const char* method,
 							const char* path,
@@ -134,6 +138,47 @@ bool generate_echo_response(HttpRequest* req, char* buffer) {
 	return true;
 }
 
+FILE* generate_file_resonse(HttpRequest* req, char* buffer) {
+	if(directory[0]=='\0'){
+		printf("no directory\n");
+		return NULL;
+	}
+	char path[PATH_SIZE], actualpath[PATH_SIZE];
+	int i=0;
+	strcpy(path, directory);
+	i=strlen(path);
+	strcpy(path+i, req->path+strlen("/files/"));
+	printf("path: %s\n", path);
+	if(!realpath(path, actualpath)){
+		printf("bad path %s\n",path);
+		return NULL;
+	}
+	FILE* file = fopen(actualpath, "r");
+	if(!file){
+		printf("error opening file\n");
+		return NULL;
+	}
+	
+	struct stat st;
+	if(stat(path, &st)){
+		printf("error getting file stats\n");
+		return NULL;
+	}
+
+	//place the header in buffer
+	i=0;
+	strcpy(buffer, HTTP_OK);
+	i=strlen(buffer);
+	strcpy(buffer+i, OCTET_STREAM);
+	i=strlen(buffer);
+	char* string;
+	if(0 > asprintf(&string, "Content-Length: %lld\r\n\r\n", st.st_size)) return false;
+	strcpy(buffer+i, string);
+	i=strlen(buffer);
+	free(string);
+	return file;
+}
+
 int handle_connection(int client_fd){
 	char buffer[BUFFER_SIZE];
 	int bytes_recieved, bytes_sent;
@@ -156,7 +201,21 @@ int handle_connection(int client_fd){
 		printf("successfully sent (%d bytes): %s\n", bytes_sent, buffer);
 	} else if (isFiles(request->path)) {
 		printf("files request\n");
-		//respond with file
+		FILE* file = generate_file_resonse(request, buffer);
+		if(!file) {
+			send(client_fd, HTTP_NOT_FOUND, strlen(HTTP_NOT_FOUND), 0);
+		} else {
+			//send the header
+			bytes_sent = write(client_fd, buffer, strlen(buffer));
+			printf("successfully sent header(%d bytes): %s\n", bytes_sent, buffer);
+			//send the file
+			while((bytes_sent=fread(buffer, 1, BUFFER_SIZE, file))>0){
+				printf("sending %d bytes\n", bytes_sent);
+				bytes_sent = write(client_fd, buffer, bytes_sent);
+				printf("successfully sent (%d bytes)\n", bytes_sent);
+			}
+			fclose(file);
+		}
 	} else if (strcmp(request->path, "/user-agent") == 0) {
 		// send user-agent
 		if(!generate_user_agent_response(request, buffer)) return 1;
@@ -197,7 +256,7 @@ int main(int argc, char* argv[]) {
 	// Disable output buffering
 	setbuf(stdout, NULL);
 
-	if (argc>=3 && strcmp(argv[1],"directory")==0) {
+	if (argc>=3 && (strcmp(argv[1],"--directory")==0)) {
 		directory=argv[2]; //dierctory is global
 		printf("directory: %s\n", directory);
 	}
@@ -229,7 +288,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	const int connection_backlog = 126;
+	const int connection_backlog = 128;
 	if (listen(server_fd, connection_backlog) != 0) {
 		printf("Listen failed: %s \n", strerror(errno));
 		return 1;
