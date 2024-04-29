@@ -190,8 +190,10 @@ int main(int argc, char* argv[]) {
 	// Disable output buffering
 	setbuf(stdout, NULL);
 
-	if (argc>0) directory=argv[0]; //dierctory is global
-	printf("directory: %s\n", directory);
+	if (argc>=3 && strcmp(argv[1],"directory")==0) {
+		directory=argv[2]; //dierctory is global
+		printf("directory: %s\n", directory);
+	}
 
 	int server_fd, client_fd;
 	socklen_t client_addr_len;
