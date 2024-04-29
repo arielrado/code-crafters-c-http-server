@@ -127,7 +127,8 @@ bool generate_echo_response(HttpRequest* req, char* buffer) {
 	return true;
 }
 
-int handle_connection(int client_fd, char* buffer){
+int handle_connection(int client_fd){
+	char buffer[BUFFER_SIZE];
 	int bytes_recieved, bytes_sent;
 	char** path_components;
 	HttpRequest *request;
@@ -182,7 +183,6 @@ int main() {
 
 	int server_fd, client_fd;
 	socklen_t client_addr_len;
-	char buffer[BUFFER_SIZE];
 	struct sockaddr_in client_addr;
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd == -1) {
