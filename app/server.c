@@ -100,7 +100,7 @@ bool generate_user_agent_response(HttpRequest* req, char* buffer) {
 	strcpy(buffer+i, PLAIN_TEXT);
 	i=strlen(buffer);
 	char* string;
-	if(0 > asprintf(&string, "Content-Length: %d\r\n\r\n", strlen(req->user_agent))) return false;
+	if(0 > asprintf(&string, "Content-Length: %lu\r\n\r\n", strlen(req->user_agent))) return false;
 	strcpy(buffer+i, string);
 	i=strlen(buffer);
 	free(string);
@@ -117,7 +117,7 @@ bool generate_echo_response(HttpRequest* req, char* buffer) {
 	strcpy(buffer+i, PLAIN_TEXT);
 	i=strlen(buffer);
 	char* string;												// len(/echo/)=6
-	if(0 > asprintf(&string, "Content-Length: %d\r\n\r\n", strlen(req->path+ECHO_LEN))) return false;
+	if(0 > asprintf(&string, "Content-Length: %lu\r\n\r\n", strlen(req->path+ECHO_LEN))) return false;
 	strcpy(buffer+i, string);
 	i=strlen(buffer);
 	free(string);
@@ -180,7 +180,8 @@ int main() {
 	setbuf(stdout, NULL);
 
 
-	int server_fd, client_addr_len, client_fd;
+	int server_fd, client_fd;
+	socklen_t client_addr_len;
 	char buffer[BUFFER_SIZE];
 	struct sockaddr_in client_addr;
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -212,7 +213,7 @@ int main() {
 		printf("Listen failed: %s \n", strerror(errno));
 		return 1;
 	}
-	client_addr_len = sizeof(client_addr);
+	client_addr_len = (socklen_t)sizeof(client_addr);
 
 	for(;;){
 		printf("Waiting for a client to connect...\n");
