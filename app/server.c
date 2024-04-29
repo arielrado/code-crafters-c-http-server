@@ -24,6 +24,8 @@ typedef struct {
 	char user_agent[256];
 } HttpRequest;
 
+char* directory = NULL;
+
 HttpRequest* new_request(const char* method,
 							const char* path,
 							const char* version,
@@ -184,10 +186,12 @@ void *t_handle_connection(void* p_client_fd) {
 	return NULL;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 	// Disable output buffering
 	setbuf(stdout, NULL);
 
+	if (argc>0) directory=argv[0]; //dierctory is global
+	printf("directory: %s\n", directory);
 
 	int server_fd, client_fd;
 	socklen_t client_addr_len;
