@@ -180,12 +180,9 @@ int main() {
 	setbuf(stdout, NULL);
 
 
-	int server_fd, client_addr_len, client_fd, bytes_recieved, bytes_sent;
+	int server_fd, client_addr_len, client_fd;
 	char buffer[BUFFER_SIZE];
 	struct sockaddr_in client_addr;
-	HttpRequest* request;
-	char** path_components;
-
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd == -1) {
 		printf("Socket creation failed: %s...\n", strerror(errno));
